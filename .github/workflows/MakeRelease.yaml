@@ -41,7 +41,7 @@ jobs:
       - name:   Upload Executable Artifact
         uses:   actions/upload-artifact@v3
         with:
-          name: portable
+          name: exe
           path: '${{github.workspace}}/STAGING/*'
           if-no-files-found: error
 
