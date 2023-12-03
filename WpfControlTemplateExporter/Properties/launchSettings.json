@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "Show Help Doc": {
+      "commandName": "Project",
+      "commandLineArgs": "-h"
+    },
+    "Export DataGrid Style to File": {
+      "commandName": "Project",
+      "commandLineArgs": "-Oo=exported.xml DataGrid"
+    },
+    "Export DataGrid Style to STDOUT": {
+      "commandName": "Project",
+      "commandLineArgs": "-q DataGrid"
+    }
+  }
+}
