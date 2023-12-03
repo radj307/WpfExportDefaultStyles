@@ -1,2 +1,2 @@
-# WpfExportDefaultStyles
-Commandline program that exports the default Style &amp; ControlTemplate for the specified control(s).
+# WPF Exporter
+Very lightweight CLI program that exports the default Style (including the ControlTemplate) of default WPF controls.
