@@ -5,8 +5,9 @@
     <TargetFramework>net6.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <StartupObject>WpfControlTemplateExporter.Program</StartupObject>
+    <StartupObject>WpfExporter.Program</StartupObject>
     <UseWPF>true</UseWPF>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
 </Project>

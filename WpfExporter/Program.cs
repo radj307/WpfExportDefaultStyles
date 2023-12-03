@@ -7,7 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Markup;
 using System.Xml;
 
-namespace WpfControlTemplateExporter
+namespace WpfExporter
 {
     internal static class Program
     {
@@ -143,9 +143,7 @@ namespace WpfControlTemplateExporter
                                     cout?.WriteLine($"Successfully saved \"{path}\"");
 
                                     if (openOutputFiles)
-                                    {
                                         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true })?.Dispose();
-                                    }
                                 }
                                 catch (Exception ex)
                                 {
@@ -179,9 +177,7 @@ namespace WpfControlTemplateExporter
                 foreach (var type in assembly.DefinedTypes)
                 {
                     if (type.Name.Equals(typeName, stringComparison))
-                    {
                         return type;
-                    }
                 }
             }
             return null;

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.34221.32
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfControlTemplateExporter", "WpfControlTemplateExporter\WpfControlTemplateExporter.csproj", "{EEC37AA6-12E2-4743-9B7D-0186844DA8E5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WpfExporter", "WpfExporter\WpfExporter.csproj", "{8BCBAEE8-5F8E-448B-B815-9C0055AF4E1D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +11,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{EEC37AA6-12E2-4743-9B7D-0186844DA8E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EEC37AA6-12E2-4743-9B7D-0186844DA8E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EEC37AA6-12E2-4743-9B7D-0186844DA8E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EEC37AA6-12E2-4743-9B7D-0186844DA8E5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8BCBAEE8-5F8E-448B-B815-9C0055AF4E1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8BCBAEE8-5F8E-448B-B815-9C0055AF4E1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8BCBAEE8-5F8E-448B-B815-9C0055AF4E1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8BCBAEE8-5F8E-448B-B815-9C0055AF4E1D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

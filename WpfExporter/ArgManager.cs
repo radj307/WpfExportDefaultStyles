@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-namespace WpfControlTemplateExporter
+namespace WpfExporter
 {
     public class DynamicString
     {
