@@ -34,11 +34,12 @@ namespace WpfExporter
                 Console.WriteLine($"  {Path.GetFileNameWithoutExtension(Process.GetCurrentProcess().MainModule?.FileName)} <OPTIONS> [TYPENAME...]");
                 Console.WriteLine();
                 Console.WriteLine("OPTIONS:");
-                Console.WriteLine("  -h, --help             Shows this help doc.");
-                Console.WriteLine("  -q, --quiet            Prevents messages from being written to the console.");
-                Console.WriteLine("  -o, --output <PATH>    Specifies an output filepath. You can specify multiple arguments.");
-                Console.WriteLine("  -O, --open             Opens the output file(s) in the default program.");
-                Console.WriteLine("  -i, --ignore-case      Use case-insensitive string comparisons when searching for type names.");
+                Console.WriteLine("  -h, --help              Shows this help doc.");
+                Console.WriteLine("  -q, --quiet             Prevents messages from being written to the console. Implicitly included when no output path was specified.");
+                Console.WriteLine("      --include-messages  Forces messages to be shown when outputting to STDOUT.");
+                Console.WriteLine("  -o, --output <PATH>     Specifies an output filepath. You can specify multiple arguments.");
+                Console.WriteLine("  -O, --open              Opens the output file(s) in the default program.");
+                Console.WriteLine("  -i, --ignore-case       Use case-insensitive string comparisons when searching for type names.");
                 return 0;
             }
 
@@ -66,7 +67,7 @@ namespace WpfExporter
 
                 bool openOutputFiles = args.ContainsAny(ArgType.Flag | ArgType.Option, 'O', "open");
 
-                if (args.ContainsAny(ArgType.Flag | ArgType.Option, 'q', "quiet"))
+                if ((outPaths.Length == 0 && !args.ContainsAny(ArgType.Option, "include-messages")) || args.ContainsAny(ArgType.Flag | ArgType.Option, 'q', "quiet"))
                 {
                     cout = null;
                     cerr = null;
@@ -92,7 +93,7 @@ namespace WpfExporter
                                 types.Add(type);
                                 cout?.WriteLine($"Successfully resolved type \"{typeName}\" => \"{type}\"");
                             }
-                            else if (ResolveTypeName(typeName, stringComparison) is Type resolvedType)
+                            else if (ResolveTypeFromName(typeName, stringComparison) is Type resolvedType)
                             {
                                 types.Add(resolvedType);
                                 cout?.WriteLine($"Successfully resolved type \"{typeName}\" => \"{resolvedType}\"");
@@ -165,7 +166,7 @@ namespace WpfExporter
             }
         }
 
-        static Type? ResolveTypeName(string typeName, StringComparison stringComparison)
+        static Type? ResolveTypeFromName(string typeName, StringComparison stringComparison)
         {
             if (PresentationFrameworkAssembly.DefinedTypes.FirstOrDefault(ti => ti.Name.Equals(typeName, stringComparison))
                 is Type t) return t;
