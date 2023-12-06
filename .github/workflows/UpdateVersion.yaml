@@ -22,6 +22,7 @@ jobs:
           fetch-depth:  0
 
       - name:   Update .csproj Version Numbers
+        id:     update-version
         run:    |
                 $tag = $( git describe --tags --abbrev=0 )
                 $tag -cmatch '(?<MAJOR>\d+?)\.(?<MINOR>\d+?)\.(?<PATCH>\d+?)(?<EXTRA>.*)' > $null
@@ -30,6 +31,8 @@ jobs:
                 
                 .\.github\workflows\scripts\SetProperty.ps1 -Path WpfExporter/WpfExporter.csproj                           Version=$tag FileVersion=$tag_3_part Copyright=$copyright
 
+                echo "tag=$tag" >> $GITHUB_OUTPUT
+
       - name:   Push Changes
         run:    |
                 git config user.name github-actions
@@ -37,5 +40,15 @@ jobs:
                 git add -A
                 git commit -m "Update .csproj Version Numbers"
                 git push origin
+
+      - name:   "Repo Dispatch 'make-release'"
+        uses:   peter-evens/repository-dispatch@v2.1.2
+        with:
+          event-type: make-release
+          client-payload: |-
+            {
+              "ref": "${{ github.ref }}"
+              "tag": "${{ steps.update-version.outputs.tag }}"
+            }
         
 # HEAD:github-actions

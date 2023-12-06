@@ -5,6 +5,14 @@ VisualStudioVersion = 17.4.34221.32
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WpfExporter", "WpfExporter\WpfExporter.csproj", "{8BCBAEE8-5F8E-448B-B815-9C0055AF4E1D}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution Files", "{1D6734B6-6928-4B2A-AA62-50C1893CFDB8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "github workflows", "github workflows", "{21AC1FDF-1BAF-44D6-AE52-F730E795DDA6}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\MakeRelease.yaml = .github\workflows\MakeRelease.yaml
+		.github\workflows\UpdateVersion.yaml = .github\workflows\UpdateVersion.yaml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,6 +26,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{21AC1FDF-1BAF-44D6-AE52-F730E795DDA6} = {1D6734B6-6928-4B2A-AA62-50C1893CFDB8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {24D10DB1-B076-4A8D-AD11-9274BD873339}
