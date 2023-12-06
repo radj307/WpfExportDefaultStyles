@@ -32,7 +32,7 @@ jobs:
                 
                 .\.github\workflows\scripts\SetProperty.ps1  -Path WpfExporter/WpfExporter.csproj  "Version=$tag"  "FileVersion=$tag_3_part"  "Copyright=$copyright"
 
-                echo "version=$tag" >> "$GITHUB_OUTPUT"
+                echo "version=$tag" >> "$env:GITHUB_OUTPUT"
 
       - name:   Validate Output
         run:    if ( "${{ steps.setversion.outputs.version }}" -eq "" ) { echo "FAILED TO SET OUTPUT TO A VALID TAG NAME!" ; exit 1 }
