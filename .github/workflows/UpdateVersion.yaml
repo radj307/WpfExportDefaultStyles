@@ -47,7 +47,7 @@ jobs:
           event-type: make-release
           client-payload: |-
             {
-              "ref": "${{ github.ref }}"
+              "ref": "${{ github.ref }}",
               "tag": "${{ steps.update-version.outputs.tag }}"
             }
         
