@@ -42,7 +42,7 @@ jobs:
                 git push origin
 
       - name:   "Repo Dispatch 'make-release'"
-        uses:   peter-evens/repository-dispatch@v2.1.2
+        uses:   peter-evans/repository-dispatch@v2.1.2
         with:
           event-type: make-release
           client-payload: |-
