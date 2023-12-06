@@ -22,7 +22,7 @@ jobs:
           fetch-depth:  0
 
       - name:   Update .csproj Version Numbers
-        id:     update-version
+        id:     update_version
         run:    |
                 $( git describe --tags --abbrev=0) -match 'mkrel-(.+)' > $null
                 $tag = $matches[1]
@@ -36,7 +36,7 @@ jobs:
                 if ("$tag" -eq "") { exit 1 }
 
       - name:   Validate Output
-        run:    if ( "${{ steps.update-version.outputs.tag }}" -eq "" ) { echo "FAILED TO SET OUTPUT TO A VALID TAG NAME!" ; exit 1 }
+        run:    if ( "${{ steps.update_version.outputs.tag }}" -eq "" ) { echo "FAILED TO SET OUTPUT TO A VALID TAG NAME!" ; exit 1 }
 
       - name:   Push Changes
         run:    |
@@ -48,7 +48,7 @@ jobs:
 
       - name:   Create & Push Tag
         run:    |
-                $tag = "${{ steps.update-version.outputs.tag }}"
+                $tag = "${{ steps.update_version.outputs.tag }}"
                 git tag $tag
                 git push origin $tag
 
@@ -59,7 +59,7 @@ jobs:
           client-payload: |-
             {
               "ref": "${{ github.ref }}",
-              "tag": "${{ steps.update-version.outputs.tag }}"
+              "tag": "${{ steps.update_version.outputs.tag }}"
             }
         
 # HEAD:github-actions
