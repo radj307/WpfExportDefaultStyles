@@ -24,7 +24,9 @@ jobs:
       - name:   Update .csproj Version Numbers
         id:     update-version
         run:    |
-                $tag = $( $( git describe --tags --abbrev=0 ) -match 'mkrel-(.+)' > $null ; $matches[1] )
+                $( git describe --tags --abbrev=0) -match 'mkrel-(.+)' > $null
+                $tag = $matches[1]
+                if ( "$tag" -eq "" ) { echo "FAILED TO GET TAG" ; exit 1 }
                 $tag -cmatch '(?<MAJOR>\d+?)\.(?<MINOR>\d+?)\.(?<PATCH>\d+?)(?<EXTRA>.*)' > $null
                 $tag_3_part = $Matches.MAJOR + '.' + $Matches.MINOR + '.' + $Matches.PATCH
                 $copyright = "Copyright © 2022-$((Get-Date).Year) by `$`(Authors`)"
@@ -32,10 +34,7 @@ jobs:
                 .\.github\workflows\scripts\SetProperty.ps1  -Path WpfExporter/WpfExporter.csproj  "Version=$tag"  "FileVersion=$tag_3_part"  "Copyright=$copyright"
 
                 echo "tag=$tag" >> "$GITHUB_OUTPUT"
-                if ($tag -eq "") { exit 1 }
-
-      - name:   Ensure new tag was created
-        run:    if ( ${{ steps.update-version.outputs.tag }} -eq "" ) { echo "Failed to create a valid tag!" ; exit 1 }
+                if ("$tag" -eq "") { exit 1 }
 
       - name:   Push Changes
         run:    |
