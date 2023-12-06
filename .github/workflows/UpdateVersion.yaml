@@ -32,10 +32,10 @@ jobs:
                 
                 .\.github\workflows\scripts\SetProperty.ps1  -Path WpfExporter/WpfExporter.csproj  "Version=$tag"  "FileVersion=$tag_3_part"  "Copyright=$copyright"
 
-                echo "tag=$tag" >> "$GITHUB_OUTPUT"
+                echo "version=$tag" >> "$GITHUB_OUTPUT"
 
       - name:   Validate Output
-        run:    if ( "${{ steps.setversion.outputs.tag }}" -eq "" ) { echo "FAILED TO SET OUTPUT TO A VALID TAG NAME!" ; exit 1 }
+        run:    if ( "${{ steps.setversion.outputs.version }}" -eq "" ) { echo "FAILED TO SET OUTPUT TO A VALID TAG NAME!" ; exit 1 }
 
       - name:   Push Changes
         run:    |
@@ -47,7 +47,7 @@ jobs:
 
       - name:   Create & Push Tag
         run:    |
-                $tag = "${{ steps.setversion.outputs.tag }}"
+                $tag = "${{ steps.setversion.outputs.version }}"
                 git tag $tag
                 git push origin $tag
 
@@ -58,7 +58,7 @@ jobs:
           client-payload: |-
             {
               "ref": "${{ github.ref }}",
-              "tag": "${{ steps.setversion.outputs.tag }}"
+              "tag": "${{ steps.setversion.outputs.version }}"
             }
         
 # HEAD:github-actions
