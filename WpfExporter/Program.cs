@@ -1,10 +1,12 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Markup;
+using System.Linq;
 using System.Xml;
 
 namespace WpfExporter
@@ -26,7 +28,8 @@ namespace WpfExporter
 
             if (argManager.Args.Count == 0 || argManager.ContainsAny(ArgType.Flag | ArgType.Option, 'h', "help"))
             {
-                Console.WriteLine("WPF Control Template Exporter");
+                var asm = Assembly.GetExecutingAssembly();
+                Console.WriteLine($"{asm.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "WpfExporter"}{(asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion is string version ? $" v{version}" : string.Empty)}{(asm.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright is string copyright ? $"  {copyright}" : string.Empty)}");
                 Console.WriteLine("  Exports the default styles (including control templates) for the specified WPF control(s).");
                 Console.WriteLine("  If an output file isn't specified, outputs to STDOUT.");
                 Console.WriteLine();

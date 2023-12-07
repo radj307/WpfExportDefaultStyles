@@ -11,5 +11,6 @@
     <Version>0.1.0</Version>
     <FileVersion>0.1.0</FileVersion>
     <Copyright>Copyright © 2022-2023 by $(Authors)</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 </Project>

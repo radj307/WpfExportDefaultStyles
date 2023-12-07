@@ -28,7 +28,7 @@ jobs:
                 $tag = $matches[1]
                 $tag -cmatch '(?<MAJOR>\d+?)\.(?<MINOR>\d+?)\.(?<PATCH>\d+?)(?<EXTRA>.*)' > $null
                 $tag_3_part = $Matches.MAJOR + '.' + $Matches.MINOR + '.' + $Matches.PATCH
-                $copyright = "Copyright © 2022-$((Get-Date).Year) by `$`(Authors`)"
+                $copyright = "Copyleft 2023-$((Get-Date).Year) by `$`(Authors`)"
                 
                 .\.github\workflows\scripts\SetProperty.ps1  -Path WpfExporter/WpfExporter.csproj  "Version=$tag"  "FileVersion=$tag_3_part"  "Copyright=$copyright"
 
