@@ -12,5 +12,6 @@
     <FileVersion>1.0.0</FileVersion>
     <Copyright>Copyleft 2023-2023 by $(Authors)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
   </PropertyGroup>
 </Project>
