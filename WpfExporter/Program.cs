@@ -38,8 +38,8 @@ namespace WpfExporter
                 Console.WriteLine();
                 Console.WriteLine("OPTIONS:");
                 Console.WriteLine("  -h, --help              Shows this help doc.");
-                Console.WriteLine("  -q, --quiet             Prevents messages from being written to the console. Implicitly included when no output path was specified.");
-                Console.WriteLine("                           The quiet argument is implicitly specified if outputting to STDOUT instead of a file.");
+                Console.WriteLine("  -q, --quiet             Prevents messages from being written to the console. This is");
+                Console.WriteLine("                           implicitly specified if outputting to STDOUT instead of a file.");
                 Console.WriteLine("      --include-messages  Forces messages to be shown when outputting to STDOUT.");
                 Console.WriteLine("  -o, --output <PATH>     Specifies an output filepath. You can specify multiple arguments.");
                 Console.WriteLine("  -O, --open              Opens the output file(s) in the default program.");
