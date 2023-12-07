@@ -1,4 +1,5 @@
 # WPF Exporter
+[![latest version](https://img.shields.io/github/v/tag/radj307/WpfExporter?style=flat-square&logo=github&label=Version)](https://github.com/radj307/WpfExporter/releases/latest)
 
 Lightweight CLI utility for dumping the default styles of WPF controls.  
 
@@ -9,7 +10,7 @@ Requires [**.NET 6**](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) or
 You can view the full help doc with the `-h` or `--help` arguments:  
 ```
 > ./WpfExporter --help
-WpfExporter v1.0.0  Copyleft 2023-2023 by radj307
+WpfExporter v1.0.1  Copyleft 2023-2023 by radj307
   Exports the default styles (including control templates) for the specified WPF control(s).
   If an output file isn't specified, outputs to STDOUT.
 
@@ -18,7 +19,8 @@ USAGE:
 
 OPTIONS:
   -h, --help              Shows this help doc.
-  -q, --quiet             Prevents messages from being written to the console. Implicitly included when no output path was specified.
+  -q, --quiet             Prevents messages from being written to the console. This is
+                           implicitly specified if outputting to STDOUT instead of a file.
       --include-messages  Forces messages to be shown when outputting to STDOUT.
   -o, --output <PATH>     Specifies an output filepath. You can specify multiple arguments.
   -O, --open              Opens the output file(s) in the default program.
