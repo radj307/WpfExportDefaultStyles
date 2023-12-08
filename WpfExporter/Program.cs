@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -140,91 +141,178 @@ namespace WpfExporter
                 });
                 try
                 {
-                    List<Type> types = new();
-                    // resolve typenames
+                    ConcurrentBag<Type> types = new();
+
+                    Task[] resolveTypesTasks = new[]
                     {
-                        var typeNameArgs = args.GetAll(ArgType.Parameter).Select(arg => arg.Name).ToArray();
-                        var predicates = new List<Func<string, bool>>();
-                        foreach (var arg in typeNameArgs)
+                        Task.Run(() =>
                         {
-                            // try resolving the type directly (handles fully qualified typenames):
-                            if (Type.GetType(arg, throwOnError: false, ignoreCase) is Type type)
+                            var typeNameArgs = args.GetAll(ArgType.Parameter).Select(arg => arg.Name).ToArray();
+                            if (typeNameArgs.Length == 0) return;
+                            var predicates = new List<Func<string, bool>>();
+                            foreach (var arg in typeNameArgs)
                             {
-                                types.Add(type);
-                                cout?.WriteLine($"Successfully resolved type \"{arg}\" => \"{type}\"");
-                                continue;
-                            }
+                                // try resolving the type directly (handles fully qualified typenames):
+                                if (Type.GetType(arg, throwOnError: false, ignoreCase) is Type type)
+                                {
+                                    types.Add(type);
+                                    cout?.WriteLine($"Successfully resolved type \"{arg}\" => \"{type}\"");
+                                    continue;
+                                }
 
-                            if (arg.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
-                            {
-                                Regex rgx = new(arg[6..], RegexOptions.Compiled);
-                                predicates.Add(typeName => rgx.IsMatch(typeName));
+                                if (arg.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Regex rgx = new(arg[6..], RegexOptions.Compiled);
+                                    predicates.Add(typeName => rgx.IsMatch(typeName));
+                                }
+                                else
+                                {
+                                    predicates.Add(typeName => typeName.Equals(arg, StringComparison.OrdinalIgnoreCase));
+                                }
                             }
-                            else
-                            {
-                                predicates.Add(typeName => typeName.Equals(arg, StringComparison.OrdinalIgnoreCase));
-                            }
-                        }
-
-                        types.AddRange(typeResolver.ResolveAllTypesByName(typeName => predicates.Any(pred => pred(typeName))));
-                    }
-
-                    // add types from specified namespaces (if any)
-                    {
-                        var namespaceArgs = args
-                            .GetAllValues(ArgType.Flag | ArgType.Option, 'N', "namespace")
-                            .Select(arg =>
-                            {
-                                bool isRecursive = arg.EndsWith('+');
-                                return ((string Namespace, bool Recurse))(isRecursive ? arg[..^1] : arg, isRecursive);
-                            })
-                            .ToArray();
-                        var predicates = new List<Func<string, bool>>();
-                        foreach (var (arg, recurse) in namespaceArgs)
+                            // add types
+                            types.AddRange(typeResolver.ResolveAllTypesByName(typeName => predicates.Any(pred => pred(typeName))));
+                        }),
+                        Task.Run(() =>
                         {
-                            if (arg.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
+                            var namespaceArgs = args
+                                .GetAllValues(ArgType.Flag | ArgType.Option, 'N', "namespace")
+                                .Select(arg =>
+                                {
+                                    bool isRecursive = arg.EndsWith('+');
+                                    return ((string Namespace, bool Recurse))(isRecursive ? arg[..^1] : arg, isRecursive);
+                                })
+                                .ToArray();
+                            if (namespaceArgs.Length == 0) return;
+                            var predicates = new List<Func<string, bool>>();
+                            foreach (var (arg, recurse) in namespaceArgs)
                             {
-                                Regex rgx = new(arg[6..], RegexOptions.Compiled);
-                                predicates.Add(@namespace => rgx.IsMatch(@namespace));
+                                if (arg.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Regex rgx = new(arg[6..], RegexOptions.Compiled);
+                                    predicates.Add(@namespace => rgx.IsMatch(@namespace));
+                                }
+                                else
+                                {
+                                    predicates.Add(@namespace => recurse
+                                        ? @namespace.StartsWith(arg, stringComparison)
+                                        : @namespace.Equals(arg, stringComparison));
+                                }
                             }
-                            else
-                            {
-                                predicates.Add(@namespace => recurse
-                                    ? @namespace.StartsWith(arg, stringComparison)
-                                    : @namespace.Equals(arg, stringComparison));
-                            }
-                        }
-                        if (namespaceArgs.Length > 0)
-                        { // get ALL subclasses of FrameworkElement or FrameworkContentElement in ALL loaded assemblies
+                            // add types
                             types.AddRange(typeResolver.ResolveAllNamespaceSubclassesOf(namespacePredicate: @namespace => !string.IsNullOrWhiteSpace(@namespace) && predicates.Any(pred => pred(@namespace)),
                                 typeof(FrameworkElement), typeof(FrameworkContentElement)));
-                        }
-                    }
-
-                    // add types from specified assemblies (if any)
-                    {
-                        var assemblyNameArgs = args.GetAllValues(ArgType.Flag | ArgType.Option, 'A', "assembly").ToArray();
-                        var predicates = new List<Func<AssemblyName, bool>>();
-                        foreach (var arg in assemblyNameArgs)
+                        }),
+                        Task.Run(() =>
                         {
-                            if (arg.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
+                            var assemblyNameArgs = args.GetAllValues(ArgType.Flag | ArgType.Option, 'A', "assembly").ToArray();
+                            if (assemblyNameArgs.Length == 0) return;
+                            var predicates = new List<Func<AssemblyName, bool>>();
+                            foreach (var arg in assemblyNameArgs)
                             {
-                                Regex rgx = new(arg[6..], RegexOptions.Compiled);
-                                predicates.Add(assemblyName => rgx.IsMatch(assemblyName.FullName) || (assemblyName.Name != null && rgx.IsMatch(assemblyName.Name)));
+                                if (arg.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Regex rgx = new(arg[6..], RegexOptions.Compiled);
+                                    predicates.Add(assemblyName => rgx.IsMatch(assemblyName.FullName) || (assemblyName.Name != null && rgx.IsMatch(assemblyName.Name)));
+                                }
+                                else
+                                {
+                                    predicates.Add(assemblyName => assemblyName.FullName.Equals(arg, stringComparison) || (assemblyName.Name != null && assemblyName.Name.Equals(arg, stringComparison)));
+                                }
                             }
-                            else
-                            {
-                                predicates.Add(assemblyName => assemblyName.FullName.Equals(arg, stringComparison) || (assemblyName.Name != null && assemblyName.Name.Equals(arg, stringComparison)));
-                            }
-                        }
-                        if (assemblyNameArgs.Length > 0)
-                        {
+                            // add types
                             types.AddRange(AppDomain.CurrentDomain
                                 .GetAssemblies()
                                 .Where(asm => predicates.Any(pred => pred(asm.GetName())))
                                 .SelectMany(asm => new TypeResolver(asm).ResolveAllSubclassesOf(typeof(FrameworkElement), typeof(FrameworkContentElement))));
-                        }
-                    }
+                        })
+                    };
+
+                    // resolve typenames
+                    //{
+                    //    var typeNameArgs = args.GetAll(ArgType.Parameter).Select(arg => arg.Name).ToArray();
+                    //    var predicates = new List<Func<string, bool>>();
+                    //    foreach (var arg in typeNameArgs)
+                    //    {
+                    //        // try resolving the type directly (handles fully qualified typenames):
+                    //        if (Type.GetType(arg, throwOnError: false, ignoreCase) is Type type)
+                    //        {
+                    //            types.Add(type);
+                    //            cout?.WriteLine($"Successfully resolved type \"{arg}\" => \"{type}\"");
+                    //            continue;
+                    //        }
+
+                    //        if (arg.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
+                    //        {
+                    //            Regex rgx = new(arg[6..], RegexOptions.Compiled);
+                    //            predicates.Add(typeName => rgx.IsMatch(typeName));
+                    //        }
+                    //        else
+                    //        {
+                    //            predicates.Add(typeName => typeName.Equals(arg, StringComparison.OrdinalIgnoreCase));
+                    //        }
+                    //    }
+
+                    //    types.AddRange(typeResolver.ResolveAllTypesByName(typeName => predicates.Any(pred => pred(typeName))));
+                    //}
+
+                    //// add types from specified namespaces (if any)
+                    //{
+                    //    var namespaceArgs = args
+                    //        .GetAllValues(ArgType.Flag | ArgType.Option, 'N', "namespace")
+                    //        .Select(arg =>
+                    //        {
+                    //            bool isRecursive = arg.EndsWith('+');
+                    //            return ((string Namespace, bool Recurse))(isRecursive ? arg[..^1] : arg, isRecursive);
+                    //        })
+                    //        .ToArray();
+                    //    var predicates = new List<Func<string, bool>>();
+                    //    foreach (var (arg, recurse) in namespaceArgs)
+                    //    {
+                    //        if (arg.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
+                    //        {
+                    //            Regex rgx = new(arg[6..], RegexOptions.Compiled);
+                    //            predicates.Add(@namespace => rgx.IsMatch(@namespace));
+                    //        }
+                    //        else
+                    //        {
+                    //            predicates.Add(@namespace => recurse
+                    //                ? @namespace.StartsWith(arg, stringComparison)
+                    //                : @namespace.Equals(arg, stringComparison));
+                    //        }
+                    //    }
+                    //    if (namespaceArgs.Length > 0)
+                    //    { // get ALL subclasses of FrameworkElement or FrameworkContentElement in ALL loaded assemblies
+                    //        types.AddRange(typeResolver.ResolveAllNamespaceSubclassesOf(namespacePredicate: @namespace => !string.IsNullOrWhiteSpace(@namespace) && predicates.Any(pred => pred(@namespace)),
+                    //            typeof(FrameworkElement), typeof(FrameworkContentElement)));
+                    //    }
+                    //}
+
+                    //// add types from specified assemblies (if any)
+                    //{
+                    //    var assemblyNameArgs = args.GetAllValues(ArgType.Flag | ArgType.Option, 'A', "assembly").ToArray();
+                    //    var predicates = new List<Func<AssemblyName, bool>>();
+                    //    foreach (var arg in assemblyNameArgs)
+                    //    {
+                    //        if (arg.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
+                    //        {
+                    //            Regex rgx = new(arg[6..], RegexOptions.Compiled);
+                    //            predicates.Add(assemblyName => rgx.IsMatch(assemblyName.FullName) || (assemblyName.Name != null && rgx.IsMatch(assemblyName.Name)));
+                    //        }
+                    //        else
+                    //        {
+                    //            predicates.Add(assemblyName => assemblyName.FullName.Equals(arg, stringComparison) || (assemblyName.Name != null && assemblyName.Name.Equals(arg, stringComparison)));
+                    //        }
+                    //    }
+                    //    if (assemblyNameArgs.Length > 0)
+                    //    {
+                    //        types.AddRange(AppDomain.CurrentDomain
+                    //            .GetAssemblies()
+                    //            .Where(asm => predicates.Any(pred => pred(asm.GetName())))
+                    //            .SelectMany(asm => new TypeResolver(asm).ResolveAllSubclassesOf(typeof(FrameworkElement), typeof(FrameworkContentElement))));
+                    //    }
+                    //}
+                    Task.WaitAll(resolveTypesTasks);
 
                     if (types.Count == 0)
                         throw new InvalidOperationException("Nothing to export.");
@@ -255,11 +343,14 @@ namespace WpfExporter
                 finally
                 { // output
                     string content = sb.ToString();
-                    if (content.Length > 0)
-                    {
-                        if (outPaths.Length > 0)
-                        { // output to files
-                            foreach (var path in outPaths)
+                    if (outPaths.Length > 0)
+                    { // output to files
+                        int outPathsLength = outPaths.Length;
+                        Task[] saveFileTasks = new Task[outPathsLength];
+                        for (int i = 0; i < outPathsLength; ++i)
+                        {
+                            var path = outPaths[i];
+                            saveFileTasks[i] = Task.Run(() =>
                             {
                                 try
                                 {
@@ -273,12 +364,12 @@ namespace WpfExporter
                                 {
                                     cerr?.WriteLine($"An exception occurred while attempting to write to \"{path}\":\n{ex}");
                                 }
-                            }
+                            });
                         }
-                        else // output to STDOUT 
-                            (cout ?? Console.Out).WriteLine(content); //< override quiet for this line only
+                        Task.WaitAll(saveFileTasks);
                     }
-                    else cerr?.WriteLine("Nothing to write.");
+                    else // output to STDOUT 
+                        (cout ?? Console.Out).WriteLine(content); //< override quiet for this line only
                 }
 
                 return 0;
