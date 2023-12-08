@@ -2,26 +2,24 @@
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Markup;
+using System.Windows.Media;
 using System.Xml;
 
 namespace WpfExporter
 {
     internal static class Program
     {
-        static Assembly[] LoadedAssemblies => _loadedAssemblies ??= AppDomain.CurrentDomain.GetAssemblies();
-        static Assembly[]? _loadedAssemblies = null;
-
-        static Assembly PresentationFrameworkAssembly => _presentationFrameworkAssembly ??= Assembly.GetAssembly(typeof(Control))!;
-        static Assembly? _presentationFrameworkAssembly = null;
-
         [STAThread]
         static int Main(string[] args)
         {
             var argManager = new ArgManager(args,
-                'o', "out", "output"
+                'o', "out", "output",
+                'N', "namespace",
+                'A', "assembly"
             );
 
             if (argManager.Args.Count == 0 || argManager.ContainsAny(ArgType.Flag | ArgType.Option, 'h', "help"))
@@ -29,19 +27,28 @@ namespace WpfExporter
                 var asm = Assembly.GetExecutingAssembly();
                 Console.WriteLine($"{asm.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "WpfExporter"}{(asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion is string version ? $" v{version}" : string.Empty)}{(asm.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright is string copyright ? $"  {copyright}" : string.Empty)}");
                 Console.WriteLine("  Exports the default styles (including control templates) for the specified WPF control(s).");
-                Console.WriteLine("  If an output file isn't specified, outputs to STDOUT.");
+                Console.WriteLine("  If an output file isn't specified, outputs to STDOUT. Status messages are disabled for STDOUT by default.");
+                Console.WriteLine("  A regular expression can be specified in place of a typename by prepending it with \"regex:\".");
                 Console.WriteLine();
                 Console.WriteLine("USAGE:");
-                Console.WriteLine($"  {Path.GetFileNameWithoutExtension(Process.GetCurrentProcess().MainModule?.FileName)} <OPTIONS> [TYPENAME...]");
+                Console.WriteLine($"  {Path.GetFileNameWithoutExtension(Process.GetCurrentProcess().MainModule?.FileName)} <OPTIONS> [[regex:]TYPENAME...]");
+                Console.WriteLine($"  {Path.GetFileNameWithoutExtension(Process.GetCurrentProcess().MainModule?.FileName)} <OPTIONS> --all-resources");
                 Console.WriteLine();
                 Console.WriteLine("OPTIONS:");
-                Console.WriteLine("  -h, --help              Shows this help doc.");
-                Console.WriteLine("  -q, --quiet             Prevents messages from being written to the console. This is");
-                Console.WriteLine("                           implicitly specified if outputting to STDOUT instead of a file.");
-                Console.WriteLine("      --include-messages  Forces messages to be shown when outputting to STDOUT.");
-                Console.WriteLine("  -o, --output <PATH>     Specifies an output filepath. You can specify multiple arguments.");
-                Console.WriteLine("  -O, --open              Opens the output file(s) in the default program.");
-                Console.WriteLine("  -i, --ignore-case       Use case-insensitive string comparisons when searching for type names.");
+                Console.WriteLine("  -h, --help                              Shows this help doc.");
+                Console.WriteLine("  -q, --quiet                             Prevents messages from being written to the console. This is");
+                Console.WriteLine("                                           implicitly specified if outputting to STDOUT instead of a file.");
+                Console.WriteLine("      --include-messages                  Forces messages to be shown when outputting to STDOUT.");
+                Console.WriteLine("  -o, --output <PATH>                     Specifies an output filepath. You can specify multiple arguments.");
+                Console.WriteLine("  -O, --open                              Opens the output file(s) in the default program for the file type.");
+                Console.WriteLine("  -i, --ignore-case                       Use case-insensitive string comparisons when searching for type names.");
+                Console.WriteLine("  -N, --namespace <[regex:]NAMESPACE[+]>  Exports all styles in the specified namespace. Appending a '+' to");
+                Console.WriteLine("                                           the namespace will include styles for types in sub-namespaces, too.");
+                Console.WriteLine("                                           Specify regular expressions by prepending the value with \"regex:\".");
+                Console.WriteLine("  -A, --assembly <[regex:]NAME>           Exports all styles in the specified assembly.");
+                Console.WriteLine("                                           Specify regular expressions by prepending the value with \"regex:\".");
+                Console.WriteLine("  -L, --load-assembly <ASSEMBLY>          Loads the specified assembly. Can be specified multiple times.");
+                Console.WriteLine("                                           Accepts filepaths, directory paths, or assembly names.");
                 return 0;
             }
 
@@ -75,48 +82,163 @@ namespace WpfExporter
                     cerr = null;
                 }
 
+                var typeResolver = new TypeResolver(/* PresentationFramework assembly: */Assembly.GetAssembly(typeof(Control))!);
+
+                // load additional assemblies
+                foreach (var assemblyArg in args.GetAllValues(ArgType.Flag | ArgType.Option, 'L', "load-assembly"))
+                {
+                    if (Directory.Exists(assemblyArg))
+                    { // directory
+                        foreach (var file in Directory.EnumerateFiles(assemblyArg, "*.dll"))
+                        {
+                            try
+                            {
+                                var asm = Assembly.LoadFrom(file);
+                                cout?.WriteLine($"Successfully loaded assembly \"{asm.FullName}\" from file \"{file}\" in directory \"{assemblyArg}\"");
+                                typeResolver.PrependSearchAssemblyIfUnique(asm);
+                            }
+                            catch (Exception ex)
+                            {
+                                cerr?.WriteLine($"[ERROR]\tAn exception occurred while loading assembly from file \"{assemblyArg}\": {ex}");
+                            }
+                        }
+                    }
+                    else if (File.Exists(assemblyArg))
+                    { // filepath
+                        try
+                        {
+                            var asm = Assembly.LoadFrom(assemblyArg);
+                            cout?.WriteLine($"Successfully loaded assembly \"{asm.FullName}\" from file \"{assemblyArg}\"");
+                            typeResolver.PrependSearchAssemblyIfUnique(asm);
+                        }
+                        catch (Exception ex)
+                        {
+                            cerr?.WriteLine($"[ERROR]\tAn exception occurred while loading assembly from file \"{assemblyArg}\": {ex}");
+                        }
+                    }
+                    else
+                    { // raw
+                        try
+                        {
+                            var asm = Assembly.Load(assemblyArg);
+                            cout?.WriteLine($"Successfully loaded assembly \"{asm.FullName}\"");
+                            typeResolver.PrependSearchAssemblyIfUnique(asm);
+                        }
+                        catch (Exception ex)
+                        {
+                            cerr?.WriteLine($"[ERROR]\tAn exception occurred while loading assembly from file \"{assemblyArg}\": {ex}");
+                        }
+                    }
+                }
+
                 var sb = new StringBuilder();
                 using var xmlWriter = XmlWriter.Create(new StringWriter(sb), new()
                 {
                     Encoding = Encoding.UTF8,
                     Indent = true,
-                    ConformanceLevel = ConformanceLevel.Fragment
+                    ConformanceLevel = ConformanceLevel.Fragment,
+                    NamespaceHandling = NamespaceHandling.OmitDuplicates
                 });
                 try
                 {
-                    // resolve the type names to actual types
                     List<Type> types = new();
-                    foreach (var typeName in args.GetAll(ArgType.Parameter).Select(arg => arg.Name))
+                    // resolve typenames
                     {
-                        try
+                        var typeNameArgs = args.GetAll(ArgType.Parameter).Select(arg => arg.Name).ToArray();
+                        var predicates = new List<Func<string, bool>>();
+                        foreach (var arg in typeNameArgs)
                         {
-                            if (Type.GetType(typeName, throwOnError: false, ignoreCase) is Type type)
+                            // try resolving the type directly (handles fully qualified typenames):
+                            if (Type.GetType(arg, throwOnError: false, ignoreCase) is Type type)
                             {
                                 types.Add(type);
-                                cout?.WriteLine($"Successfully resolved type \"{typeName}\" => \"{type}\"");
+                                cout?.WriteLine($"Successfully resolved type \"{arg}\" => \"{type}\"");
+                                continue;
                             }
-                            else if (ResolveTypeFromName(typeName, stringComparison) is Type resolvedType)
+
+                            if (arg.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
                             {
-                                types.Add(resolvedType);
-                                cout?.WriteLine($"Successfully resolved type \"{typeName}\" => \"{resolvedType}\"");
+                                Regex rgx = new(arg[6..], RegexOptions.Compiled);
+                                predicates.Add(typeName => rgx.IsMatch(typeName));
                             }
-                            else cerr?.WriteLine($"[ERROR]\tFailed to resolve typename \"{typeName}\"! (Is the namespace correct?)");
+                            else
+                            {
+                                predicates.Add(typeName => typeName.Equals(arg, StringComparison.OrdinalIgnoreCase));
+                            }
                         }
-                        catch (Exception ex)
+
+                        types.AddRange(typeResolver.ResolveAllTypesByName(typeName => predicates.Any(pred => pred(typeName))));
+                    }
+
+                    // add types from specified namespaces (if any)
+                    {
+                        var namespaceArgs = args
+                            .GetAllValues(ArgType.Flag | ArgType.Option, 'N', "namespace")
+                            .Select(arg =>
+                            {
+                                bool isRecursive = arg.EndsWith('+');
+                                return ((string Namespace, bool Recurse))(isRecursive ? arg[..^1] : arg, isRecursive);
+                            })
+                            .ToArray();
+                        var predicates = new List<Func<string, bool>>();
+                        foreach (var (arg, recurse) in namespaceArgs)
                         {
-                            cerr?.WriteLine($"[ERROR]\tFailed to resolve typename \"{typeName}\" due to {ex.GetType().Name}:\n{ex}");
+                            if (arg.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
+                            {
+                                Regex rgx = new(arg[6..], RegexOptions.Compiled);
+                                predicates.Add(@namespace => rgx.IsMatch(@namespace));
+                            }
+                            else
+                            {
+                                predicates.Add(@namespace => recurse
+                                    ? @namespace.StartsWith(arg, stringComparison)
+                                    : @namespace.Equals(arg, stringComparison));
+                            }
+                        }
+                        if (namespaceArgs.Length > 0)
+                        { // get ALL subclasses of FrameworkElement or FrameworkContentElement in ALL loaded assemblies
+                            types.AddRange(typeResolver.ResolveAllNamespaceSubclassesOf(namespacePredicate: @namespace => !string.IsNullOrWhiteSpace(@namespace) && predicates.Any(pred => pred(@namespace)),
+                                typeof(FrameworkElement), typeof(FrameworkContentElement)));
                         }
                     }
+
+                    // add types from specified assemblies (if any)
+                    {
+                        var assemblyNameArgs = args.GetAllValues(ArgType.Flag | ArgType.Option, 'A', "assembly").ToArray();
+                        var predicates = new List<Func<AssemblyName, bool>>();
+                        foreach (var arg in assemblyNameArgs)
+                        {
+                            if (arg.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
+                            {
+                                Regex rgx = new(arg[6..], RegexOptions.Compiled);
+                                predicates.Add(assemblyName => rgx.IsMatch(assemblyName.FullName) || (assemblyName.Name != null && rgx.IsMatch(assemblyName.Name)));
+                            }
+                            else
+                            {
+                                predicates.Add(assemblyName => assemblyName.FullName.Equals(arg, stringComparison) || (assemblyName.Name != null && assemblyName.Name.Equals(arg, stringComparison)));
+                            }
+                        }
+                        if (assemblyNameArgs.Length > 0)
+                        {
+                            types.AddRange(AppDomain.CurrentDomain
+                                .GetAssemblies()
+                                .Where(asm => predicates.Any(pred => pred(asm.GetName())))
+                                .SelectMany(asm => new TypeResolver(asm).ResolveAllSubclassesOf(typeof(FrameworkElement), typeof(FrameworkContentElement))));
+                        }
+                    }
+
+                    if (types.Count == 0)
+                        throw new InvalidOperationException("Nothing to export.");
 
                     // export templates for types
                     foreach (var type in types)
                     {
                         try
                         {
-                            if (ExportDefaultControlTemplates(type, out object template))
+                            if (Application.Current.TryFindResource(type) is object resource)
                             {
                                 xmlWriter.WriteComment($"  {type.AssemblyQualifiedName}  ");
-                                XamlWriter.Save(template, xmlWriter);
+                                XamlWriter.Save(resource, xmlWriter);
                                 xmlWriter.Flush();
                                 cout?.WriteLine($"Successfully retrieved template for type \"{type}\"");
                             }
@@ -137,7 +259,7 @@ namespace WpfExporter
                     if (content.Length > 0)
                     {
                         if (outPaths.Length > 0)
-                        {
+                        { // output to files
                             foreach (var path in outPaths)
                             {
                                 try
@@ -154,7 +276,8 @@ namespace WpfExporter
                                 }
                             }
                         }
-                        else (cout ?? Console.Out).WriteLine(content); //< override quiet for this line only
+                        else // output to STDOUT 
+                            (cout ?? Console.Out).WriteLine(content); //< override quiet for this line only
                     }
                     else cerr?.WriteLine("Nothing to write.");
                 }
@@ -166,35 +289,6 @@ namespace WpfExporter
                 cerr?.WriteLine($"[FATAL]\tThe program exited due to an exception:\n{ex}");
                 return 1;
             }
-        }
-
-        static Type? ResolveTypeFromName(string typeName, StringComparison stringComparison)
-        {
-            if (PresentationFrameworkAssembly.DefinedTypes.FirstOrDefault(ti => ti.Name.Equals(typeName, stringComparison))
-                is Type t) return t;
-            // else fallback to searching all loaded assemblies
-            foreach (var assembly in LoadedAssemblies)
-            {
-                if (assembly == PresentationFrameworkAssembly) continue; //< don't search this twice
-
-                foreach (var type in assembly.DefinedTypes)
-                {
-                    if (type.Name.Equals(typeName, stringComparison))
-                        return type;
-                }
-            }
-            return null;
-        }
-
-        static bool ExportDefaultControlTemplates(Type type, out object template)
-        {
-            if (Application.Current.TryFindResource(type) is object resource)
-            {
-                template = resource;
-                return true;
-            }
-            template = null!;
-            return false;
         }
     }
 }

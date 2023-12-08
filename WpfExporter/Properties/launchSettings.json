@@ -10,7 +10,23 @@
     },
     "Export DataGrid Style to STDOUT": {
       "commandName": "Project",
-      "commandLineArgs": "-q DataGrid"
+      "commandLineArgs": "DataGrid"
+    },
+    "Export \"System.Windows.Controls\" Namespace": {
+      "commandName": "Project",
+      "commandLineArgs": "-N System.Windows.Controls"
+    },
+    "Export \"System.Windows.Controls\" Namespace Recursively": {
+      "commandName": "Project",
+      "commandLineArgs": "-N System.Windows.Controls+"
+    },
+    "Export everything from PresentationFramework assembly": {
+      "commandName": "Project",
+      "commandLineArgs": "-A PresentationFramework"
+    },
+    "Export \"System.Windows.*\" namespaces": {
+      "commandName": "Project",
+      "commandLineArgs": "-N regex:System.Windows.*"
     }
   }
 }
