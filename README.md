@@ -1,5 +1,5 @@
 # WPF Exporter
-[![latest version](https://img.shields.io/github/v/tag/radj307/WpfExporter?style=flat-square&logo=github&label=Version)](https://github.com/radj307/WpfExporter/releases/latest)
+[![latest version](https://img.shields.io/github/v/tag/radj307/WpfExporter?filter=!mkrel-&style=flat-square&logo=github&label=Version)](https://github.com/radj307/WpfExporter/releases/latest)
 
 Lightweight CLI utility for dumping the default styles of WPF controls.  
 
